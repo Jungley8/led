@@ -39,17 +39,29 @@ func HashToken(raw string) string {
 
 // Domain is a domain managed by led, tied to a DNS provider account.
 type Domain struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	OwnerID   uint      `gorm:"index;default:1" json:"-"`
-	Name      string    `gorm:"uniqueIndex;size:255" json:"name"`
-	Provider  string    `gorm:"size:32" json:"provider"` // cloudflare, ...
-	ZoneID    string    `gorm:"size:64" json:"zoneId"`
-	Note      string    `gorm:"type:text" json:"note"`
-	Config    string    `gorm:"type:text" json:"-"` // AES-GCM encrypted provider credentials JSON
-	ForMail   bool      `json:"forMail"`            // accept inbound email for this domain
-	ForLink   bool      `json:"forLink"`            // serve short links on this domain
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	OwnerID  uint   `gorm:"index;default:1" json:"-"`
+	Name     string `gorm:"uniqueIndex;size:255" json:"name"`
+	Provider string `gorm:"size:32" json:"provider"` // cloudflare, ...
+	ZoneID   string `gorm:"size:64" json:"zoneId"`
+	Note     string `gorm:"type:text" json:"note"`
+	Config   string `gorm:"type:text" json:"-"` // AES-GCM encrypted provider credentials JSON
+	ForMail  bool   `json:"forMail"`            // accept inbound email for this domain
+	ForLink  bool   `json:"forLink"`            // serve short links on this domain
+	// LinkHost is the hostname short links are served on for this zone, typically
+	// a subdomain such as "go.example.com". Empty falls back to the apex Name.
+	LinkHost  string    `gorm:"size:255" json:"linkHost"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// EffectiveLinkHost returns the hostname links are served on (LinkHost, or the
+// apex Name when unset).
+func (d Domain) EffectiveLinkHost() string {
+	if d.LinkHost != "" {
+		return d.LinkHost
+	}
+	return d.Name
 }
 
 // Link is a short link. (Host, Slug) is unique.

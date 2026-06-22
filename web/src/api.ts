@@ -26,6 +26,7 @@ export interface Domain {
   note: string;
   forMail: boolean;
   forLink: boolean;
+  linkHost: string; // hostname short links are served on (usually a subdomain)
   createdAt: string;
 }
 

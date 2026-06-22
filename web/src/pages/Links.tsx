@@ -255,15 +255,20 @@ function LinkEditor({
         <Field label="Slug" hint="blank = random">
           <input className="input" value={slug} onChange={(e) => setSlug(e.target.value)} />
         </Field>
-        <Field label="Host" hint={domains.length ? "domains with links enabled" : "no link domains configured"}>
+        <Field label="Host" hint={domains.length ? "short-link host (subdomain)" : "enable short links on a domain first"}>
           <select className="input" value={host} onChange={(e) => setHost(e.target.value)}>
             <option value="">Any / default</option>
-            {domains.map((d) => (
-              <option key={d.id} value={d.name}>
-                {d.name}
-              </option>
-            ))}
-            {host && !domains.some((d) => d.name === host) && <option value={host}>{host}</option>}
+            {domains.map((d) => {
+              const h = d.linkHost || d.name;
+              return (
+                <option key={d.id} value={h}>
+                  {h}
+                </option>
+              );
+            })}
+            {host && !domains.some((d) => (d.linkHost || d.name) === host) && (
+              <option value={host}>{host}</option>
+            )}
           </select>
         </Field>
       </div>

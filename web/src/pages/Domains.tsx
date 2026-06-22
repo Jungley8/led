@@ -44,8 +44,12 @@ export default function DomainsPage() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{d.name}</span>
                   <span className="badge">{d.provider}</span>
-                  {d.forLink && <span className="badge">links</span>}
-                  {d.forMail && <span className="badge">mail</span>}
+                  {d.forLink && (
+                    <span className="badge bg-indigo-500/15 text-indigo-300" title="short-link host">
+                      🔗 {d.linkHost || d.name}
+                    </span>
+                  )}
+                  {d.forMail && <span className="badge">✉️ mail</span>}
                 </div>
                 {d.note && <div className="mt-0.5 truncate text-xs text-amber-300/80">📝 {d.note}</div>}
               </div>
@@ -180,13 +184,21 @@ function DomainEditor({
   const [note, setNote] = useState(domain?.note ?? "");
   const [forLink, setForLink] = useState(domain?.forLink ?? false);
   const [forMail, setForMail] = useState(domain?.forMail ?? false);
+  const [linkHost, setLinkHost] = useState(domain?.linkHost ?? "");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // When enabling short links, suggest a "go." subdomain rather than the apex.
+  function enableLinks(on: boolean) {
+    setForLink(on);
+    if (on && !linkHost && name) setLinkHost(`go.${name}`);
+  }
+  const linkSubs = name ? [`go.${name}`, `s.${name}`, `link.${name}`, name] : [];
 
   async function save() {
     setErr("");
     setBusy(true);
-    const payload: any = { name, provider, zoneId, note, forLink, forMail };
+    const payload: any = { name, provider, zoneId, note, forLink, forMail, linkHost };
     if (apiToken) payload.config = { apiToken };
     try {
       if (domain) await api.updateDomain(domain.id, payload);
@@ -224,14 +236,39 @@ function DomainEditor({
       <Field label="Note">
         <textarea className="input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
       </Field>
-      <div className="mb-4 flex gap-6">
+      <div className="mb-3 flex gap-6">
         <label className="flex items-center gap-2 text-sm text-zinc-400">
-          <Toggle on={forLink} onChange={setForLink} /> Serve short links
+          <Toggle on={forLink} onChange={enableLinks} /> Serve short links
         </label>
         <label className="flex items-center gap-2 text-sm text-zinc-400">
           <Toggle on={forMail} onChange={setForMail} /> Accept email
         </label>
       </div>
+      {forLink && (
+        <Field
+          label="Short-link host"
+          hint="usually a subdomain — point this host's DNS at led (use + Subdomain in DNS records)"
+        >
+          <input
+            className="input"
+            value={linkHost}
+            onChange={(e) => setLinkHost(e.target.value)}
+            placeholder={name ? `go.${name}` : "go.example.com"}
+          />
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {linkSubs.map((h) => (
+              <button
+                key={h}
+                type="button"
+                className={`badge ${linkHost === h ? "bg-indigo-500/30 text-indigo-200" : "cursor-pointer hover:bg-zinc-700"}`}
+                onClick={() => setLinkHost(h)}
+              >
+                {h === name ? `${h} (apex)` : h}
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
       {err && <p className="mb-3 text-sm text-red-400">{err}</p>}
       <div className="flex justify-end gap-2">
         <button className="btn-ghost" onClick={onClose}>
@@ -362,6 +399,7 @@ function RecordsModal({ domain, onClose }: { domain: Domain; onClose: () => void
         <RecordEditor
           domainId={domain.id}
           domainName={domain.name}
+          linkHost={domain.linkHost}
           record={typeof editing === "string" ? null : editing}
           subdomain={editing === "subdomain"}
           onClose={() => setEditing(null)}
@@ -378,6 +416,7 @@ function RecordsModal({ domain, onClose }: { domain: Domain; onClose: () => void
 function RecordEditor({
   domainId,
   domainName,
+  linkHost,
   record,
   subdomain,
   onClose,
@@ -385,6 +424,7 @@ function RecordEditor({
 }: {
   domainId: number;
   domainName: string;
+  linkHost?: string;
   record: DNSRecord | null;
   subdomain?: boolean;
   onClose: () => void;
@@ -397,11 +437,20 @@ function RecordEditor({
   const [proxied, setProxied] = useState(record?.proxied ?? false);
   const [err, setErr] = useState("");
 
+  // The record name for the configured short-link host (e.g. linkHost
+  // "go.example.com" on zone "example.com" -> "go"; apex -> "@").
+  const linkSub =
+    linkHost && linkHost.endsWith("." + domainName)
+      ? linkHost.slice(0, -(domainName.length + 1))
+      : linkHost === domainName
+        ? "@"
+        : "go";
+
   // Subdomain presets: one click to set up a host for short links or email.
   function preset(kind: "link" | "mail") {
     if (kind === "link") {
       setType("CNAME");
-      setName(name || "go");
+      setName(name || linkSub);
       setContent(domainName); // CNAME to apex; point apex at your led host
       setComment("led short-link host");
       setProxied(true);

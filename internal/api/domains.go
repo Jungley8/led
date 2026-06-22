@@ -14,6 +14,24 @@ func (h *Handler) dnsProviders(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dnsprovider.Names())
 }
 
+// normalizeLinkHost cleans a user-supplied short-link host into a bare
+// lowercase hostname (no scheme, no path, no trailing dot). It is only kept
+// when the domain serves links.
+func normalizeLinkHost(host string, forLink bool) string {
+	if !forLink {
+		return ""
+	}
+	host = strings.ToLower(strings.TrimSpace(host))
+	host = strings.TrimPrefix(host, "https://")
+	host = strings.TrimPrefix(host, "http://")
+	host = strings.TrimSuffix(host, "/")
+	host = strings.TrimSuffix(host, ".")
+	if i := strings.IndexAny(host, "/:"); i >= 0 {
+		host = host[:i]
+	}
+	return host
+}
+
 // syncDomains imports every zone the given credentials can access, creating a
 // Domain for each new zone and refreshing the zone id / stored credentials on
 // existing ones. User flags (forLink/forMail/note) on existing domains are kept.
@@ -79,6 +97,7 @@ type domainDTO struct {
 	Note     string         `json:"note"`
 	ForMail  bool           `json:"forMail"`
 	ForLink  bool           `json:"forLink"`
+	LinkHost string         `json:"linkHost"`
 	Config   map[string]any `json:"config"`
 }
 
@@ -107,7 +126,8 @@ func (h *Handler) createDomain(w http.ResponseWriter, r *http.Request) {
 	dom := models.Domain{
 		OwnerID: models.SingleUserID,
 		Name:    d.Name, Provider: d.Provider, ZoneID: d.ZoneID,
-		Note: d.Note, ForMail: d.ForMail, ForLink: d.ForLink, Config: enc,
+		Note: d.Note, ForMail: d.ForMail, ForLink: d.ForLink,
+		LinkHost: normalizeLinkHost(d.LinkHost, d.ForLink), Config: enc,
 	}
 	// Best-effort credential check.
 	if prov, err := h.providerFor(dom); err == nil && dom.ZoneID != "" {
@@ -145,6 +165,7 @@ func (h *Handler) updateDomain(w http.ResponseWriter, r *http.Request) {
 	dom.ZoneID = d.ZoneID
 	dom.ForMail = d.ForMail
 	dom.ForLink = d.ForLink
+	dom.LinkHost = normalizeLinkHost(d.LinkHost, d.ForLink)
 	if len(d.Config) > 0 {
 		enc, err := h.encryptConfig(d.Config)
 		if err != nil {
