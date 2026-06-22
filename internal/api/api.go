@@ -47,6 +47,8 @@ func (h *Handler) Routes() http.Handler {
 	}
 
 	p("GET /api/overview", h.overview)
+	p("GET /api/settings", h.getSettings)
+	p("PUT /api/settings", h.updateSettings)
 
 	p("GET /api/links", h.listLinks)
 	p("GET /api/links/metadata", h.linkMetadata)

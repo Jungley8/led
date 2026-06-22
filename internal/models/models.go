@@ -184,9 +184,16 @@ type Email struct {
 	ReceivedAt  time.Time `gorm:"index" json:"receivedAt"`
 }
 
+// Setting is a single key/value runtime configuration entry (reserved slugs,
+// reserved mailbox prefixes, a global Cloudflare token, …).
+type Setting struct {
+	Key   string `gorm:"primaryKey;size:64" json:"key"`
+	Value string `gorm:"type:text" json:"value"`
+}
+
 // AllModels lists every model for AutoMigrate.
 func AllModels() []any {
 	return []any{
-		&Domain{}, &Link{}, &LinkEvent{}, &Mailbox{}, &Email{}, &Token{},
+		&Domain{}, &Link{}, &LinkEvent{}, &Mailbox{}, &Email{}, &Token{}, &Setting{},
 	}
 }

@@ -171,6 +171,10 @@ func (h *Handler) createLink(w http.ResponseWriter, r *http.Request) {
 	if slug == "" {
 		slug = randomSlug(6)
 	}
+	if h.isReservedSlug(slug) {
+		writeErr(w, http.StatusConflict, "slug is reserved")
+		return
+	}
 	enabled := true
 	if d.Enabled != nil {
 		enabled = *d.Enabled
@@ -206,7 +210,12 @@ func (h *Handler) updateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if d.Slug != "" {
-		l.Slug = strings.TrimSpace(d.Slug)
+		slug := strings.TrimSpace(d.Slug)
+		if slug != l.Slug && h.isReservedSlug(slug) {
+			writeErr(w, http.StatusConflict, "slug is reserved")
+			return
+		}
+		l.Slug = slug
 	}
 	if d.Target != "" {
 		t := strings.TrimSpace(d.Target)

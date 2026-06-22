@@ -287,6 +287,10 @@ func (h *Handler) resolveMailbox(addr string) (*models.Mailbox, bool) {
 	if !h.cfg.CatchAll {
 		return nil, false
 	}
+	// Reserved local-parts are never auto-created by catch-all.
+	if h.isReservedMailbox(addr) {
+		return nil, false
+	}
 	at := strings.LastIndex(addr, "@")
 	if at < 0 {
 		return nil, false

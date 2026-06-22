@@ -1,5 +1,11 @@
 // Package server wires the API, short-link redirector, and embedded SPA
-// behind a single http.Handler with host-aware routing.
+// behind a single http.Handler.
+//
+// Routing:
+//   - /api/*    → JSON API
+//   - /admin/*  → embedded React dashboard (assets + SPA fallback)
+//   - /         → redirect to /admin/
+//   - /{slug}   → short-link redirect (the root namespace belongs to links)
 package server
 
 import (
@@ -32,7 +38,7 @@ func New(cfg *config.Config, apiHandler http.Handler, short *shortlink.Service, 
 		cfg:    cfg,
 		api:    apiHandler,
 		short:  short,
-		static: http.FileServer(http.FS(webFS)),
+		static: http.StripPrefix("/admin/", http.FileServer(http.FS(webFS))),
 		spaIdx: idx,
 		assets: webFS,
 	}, nil
@@ -47,59 +53,55 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Short-link redirect: single-segment GET that isn't the dashboard.
-	if r.Method == http.MethodGet && isSlugPath(path) && !s.isAdminHost(r.Host) {
-		slug := strings.TrimPrefix(path, "/")
-		if link, ok := s.short.Lookup(r.Host, slug); ok {
-			s.short.Handle(w, r, link)
+	// 2. Dashboard SPA under /admin (gated to the admin host when configured).
+	if path == "/admin" || strings.HasPrefix(path, "/admin/") {
+		if !s.dashboardAllowed(r.Host) {
+			http.NotFound(w, r)
 			return
 		}
-		// fall through to SPA (e.g. a 404 page) if no slug matches
-	}
-
-	// 3. Static asset if it exists, else SPA index (client-side routing).
-	if s.assetExists(path) {
-		s.static.ServeHTTP(w, r)
+		rest := strings.TrimPrefix(strings.TrimPrefix(path, "/admin"), "/")
+		if rest != "" && s.assetExists(rest) {
+			s.static.ServeHTTP(w, r)
+			return
+		}
+		s.serveIndex(w)
 		return
 	}
-	s.serveIndex(w)
+
+	// 3. Root → dashboard.
+	if path == "/" {
+		if s.dashboardAllowed(r.Host) {
+			http.Redirect(w, r, "/admin/", http.StatusFound)
+			return
+		}
+		http.NotFound(w, r)
+		return
+	}
+
+	// 4. Everything else in the root namespace is a short link.
+	if r.Method == http.MethodGet {
+		slug := strings.TrimPrefix(path, "/")
+		if slug != "" && !strings.Contains(slug, "/") {
+			if link, ok := s.short.Lookup(r.Host, slug); ok {
+				s.short.Handle(w, r, link)
+				return
+			}
+		}
+	}
+	http.NotFound(w, r)
 }
 
-// isAdminHost reports whether the request targets the dashboard host. When
-// LED_ADMIN_HOST is unset, every host may serve the dashboard, so slugs are
-// still tried first (lookup miss falls through to the SPA).
-func (s *Server) isAdminHost(host string) bool {
+// dashboardAllowed reports whether the dashboard may be served for this host.
+// When LED_ADMIN_HOST is set, the dashboard is restricted to that host so pure
+// link hosts don't expose it; otherwise it is served on any host.
+func (s *Server) dashboardAllowed(host string) bool {
 	if s.cfg.AdminHost == "" {
-		return false
+		return true
 	}
 	return stripPort(host) == s.cfg.AdminHost
 }
 
-// isSlugPath matches "/something" with no further slashes and no file extension.
-func isSlugPath(p string) bool {
-	if p == "/" || !strings.HasPrefix(p, "/") {
-		return false
-	}
-	rest := p[1:]
-	if rest == "" || strings.Contains(rest, "/") {
-		return false
-	}
-	// Skip obvious static files and reserved SPA roots.
-	if strings.Contains(rest, ".") {
-		return false
-	}
-	switch rest {
-	case "assets", "login", "overview", "links", "domains", "mail", "settings", "favicon.ico":
-		return false
-	}
-	return true
-}
-
-func (s *Server) assetExists(path string) bool {
-	if path == "/" {
-		return false
-	}
-	name := strings.TrimPrefix(path, "/")
+func (s *Server) assetExists(name string) bool {
 	f, err := s.assets.Open(name)
 	if err != nil {
 		return false

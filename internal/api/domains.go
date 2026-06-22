@@ -61,6 +61,12 @@ func (h *Handler) syncDomains(w http.ResponseWriter, r *http.Request) {
 	if d.Provider == "" {
 		d.Provider = "cloudflare"
 	}
+	// Fall back to the global Cloudflare token from Settings when none is given.
+	if len(d.Config) == 0 && d.Provider == "cloudflare" {
+		if tok := h.cloudflareToken(); tok != "" {
+			d.Config = map[string]any{"apiToken": tok}
+		}
+	}
 	enc, err := h.encryptConfig(d.Config)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "encrypt config")

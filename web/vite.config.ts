@@ -4,7 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "./",
+  // The dashboard SPA is mounted under /admin so short-link slugs own the root.
+  base: "/admin/",
   build: {
     outDir: "../webembed/dist",
     emptyOutDir: true,

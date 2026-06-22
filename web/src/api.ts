@@ -154,9 +154,24 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   return res.json();
 }
 
+export interface Settings {
+  reservedSlugs: string;
+  reservedMailboxes: string;
+  builtinReserved: string[];
+  cloudflareTokenSet: boolean;
+}
+
 export const api = {
   // overview
   overview: () => req<Overview>("GET", "/api/overview"),
+
+  // settings
+  settings: () => req<Settings>("GET", "/api/settings"),
+  updateSettings: (s: {
+    reservedSlugs?: string;
+    reservedMailboxes?: string;
+    cloudflareToken?: string;
+  }) => req<Settings>("PUT", "/api/settings", s),
 
   // auth
   me: () => req<{ username: string }>("GET", "/api/auth/me"),

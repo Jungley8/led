@@ -22,9 +22,17 @@ func (h *Handler) encryptConfig(cfg map[string]any) (string, error) {
 	return h.cipher.Encrypt(b)
 }
 
-// providerFor decrypts a domain's stored credentials and builds its DNS provider.
+// providerFor decrypts a domain's stored credentials and builds its DNS
+// provider. Cloudflare domains without their own credentials fall back to the
+// global Cloudflare token configured in Settings.
 func (h *Handler) providerFor(dom models.Domain) (dnsprovider.Provider, error) {
 	if dom.Config == "" {
+		if dom.Provider == "cloudflare" {
+			if tok := h.cloudflareToken(); tok != "" {
+				creds, _ := json.Marshal(map[string]string{"apiToken": tok})
+				return dnsprovider.New("cloudflare", creds)
+			}
+		}
 		return nil, errors.New("domain has no provider credentials configured")
 	}
 	creds, err := h.cipher.Decrypt(dom.Config)

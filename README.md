@@ -63,7 +63,8 @@ image with no Node stage:
 docker build -f deploy/Dockerfile.binary -t led:latest .
 ```
 
-Open `http://localhost:8080`, sign in with `LED_ADMIN_USER` / `LED_ADMIN_PASSWORD`.
+Open `http://localhost:8080` (redirects to `/admin`), sign in with
+`LED_ADMIN_USER` / `LED_ADMIN_PASSWORD`.
 
 ## Architecture
 
@@ -71,8 +72,8 @@ Open `http://localhost:8080`, sign in with `LED_ADMIN_USER` / `LED_ADMIN_PASSWOR
             ┌──────────────────────────── led (single binary) ────────────────────────────┐
   browser → │  host router                                                                  │
             │   ├─ /api/*        → JSON API (auth, links, domains, mailboxes, emails)       │
-            │   ├─ admin host    → embedded React dashboard (SPA)                            │
-            │   └─ link host /x  → 302 redirect + async click event                          │
+            │   ├─ /admin/*      → embedded React dashboard (SPA)                            │
+            │   └─ /{slug}       → 302 redirect + async click event (root = link namespace) │
             │                                                                                │
             │  GORM ──┬─ SQLite (pure-Go, default)   DNS ─ provider iface ─ Cloudflare API   │
             │         └─ Postgres (optional)         Mail ─ inbound webhook + SMTP sender     │
@@ -81,12 +82,15 @@ Open `http://localhost:8080`, sign in with `LED_ADMIN_USER` / `LED_ADMIN_PASSWOR
    Cloudflare Email Routing → Worker → POST /api/email/inbound  (deploy/cloudflare-email-worker.js)
 ```
 
-### Host routing
+### Routing
 
-- `LED_ADMIN_HOST` (e.g. `admin.example.com`) serves the dashboard.
-- Any other host pointed at led serves short links: `https://go.example.com/abc`.
-- If `LED_ADMIN_HOST` is empty, every host can serve the dashboard and a bare
-  `/slug` is resolved as a short link first, falling back to the SPA.
+- The dashboard lives under **`/admin`** so the entire root namespace belongs to
+  short links — `https://go.example.com/abc` is never shadowed by a dashboard route.
+- `/` redirects to `/admin/`.
+- `LED_ADMIN_HOST` (e.g. `admin.example.com`), when set, restricts `/admin` to
+  that host so pure link hosts don't expose the dashboard; unset = served anywhere.
+- Reserved slugs (`admin`, `api`, `assets`, plus any you configure in **Settings**)
+  can't be used for short links.
 
 ## Email receiving (Cloudflare)
 

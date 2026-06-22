@@ -1,8 +1,123 @@
 import { useEffect, useState } from "react";
-import { api, ApiError, Token } from "../api";
+import { api, ApiError, Settings, Token } from "../api";
 import { Empty, Field, Modal, timeAgo } from "../ui";
 
 export default function SettingsPage() {
+  return (
+    <div className="space-y-10">
+      <GeneralSettings />
+      <ApiTokens />
+    </div>
+  );
+}
+
+// GeneralSettings holds runtime configuration: reserved slugs / mailboxes and a
+// global Cloudflare API token used as a fallback for sync and DNS operations.
+function GeneralSettings() {
+  const [s, setS] = useState<Settings | null>(null);
+  const [reservedSlugs, setReservedSlugs] = useState("");
+  const [reservedMailboxes, setReservedMailboxes] = useState("");
+  const [cfToken, setCfToken] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const v = await api.settings();
+    setS(v);
+    setReservedSlugs(v.reservedSlugs);
+    setReservedMailboxes(v.reservedMailboxes);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function save() {
+    setBusy(true);
+    setSaved(false);
+    try {
+      const payload: any = { reservedSlugs, reservedMailboxes };
+      if (cfToken.trim()) payload.cloudflareToken = cfToken.trim();
+      const v = await api.updateSettings(payload);
+      setS(v);
+      setCfToken("");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!s) return <div className="text-zinc-500">loading…</div>;
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h1 className="text-xl font-semibold">Settings</h1>
+        <p className="text-sm text-zinc-500">Runtime configuration for this instance.</p>
+      </div>
+      <div className="card space-y-5 p-5">
+        <Field
+          label="Reserved slugs"
+          hint={`These can't be used for short links. Always reserved: ${s.builtinReserved.join(", ")}. One per line or comma-separated.`}
+        >
+          <textarea
+            className="input font-mono"
+            rows={3}
+            value={reservedSlugs}
+            onChange={(e) => setReservedSlugs(e.target.value)}
+            placeholder="pricing&#10;login&#10;about"
+          />
+        </Field>
+        <Field
+          label="Reserved mailbox prefixes"
+          hint="Local-parts (before @) that catch-all will NOT auto-create, e.g. admin, postmaster, abuse."
+        >
+          <textarea
+            className="input font-mono"
+            rows={2}
+            value={reservedMailboxes}
+            onChange={(e) => setReservedMailboxes(e.target.value)}
+            placeholder="admin&#10;postmaster"
+          />
+        </Field>
+        <Field
+          label="Cloudflare API token"
+          hint={
+            s.cloudflareTokenSet
+              ? "A token is set (encrypted). Sync & DNS use it when a domain has no own token. Enter a new value to replace."
+              : "Optional global token used by Sync and as a fallback for DNS operations. Zone:Read + DNS:Edit."
+          }
+        >
+          <input
+            className="input"
+            value={cfToken}
+            onChange={(e) => setCfToken(e.target.value)}
+            placeholder={s.cloudflareTokenSet ? "•••••••• (set)" : "Cloudflare API token"}
+          />
+          {s.cloudflareTokenSet && (
+            <button
+              className="btn-ghost mt-1.5 text-red-400"
+              onClick={async () => {
+                await api.updateSettings({ cloudflareToken: "" });
+                load();
+              }}
+            >
+              Clear stored token
+            </button>
+          )}
+        </Field>
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" onClick={save} disabled={busy}>
+            {busy ? "Saving…" : "Save settings"}
+          </button>
+          {saved && <span className="text-sm text-green-400">✓ saved</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ApiTokens() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
