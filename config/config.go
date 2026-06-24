@@ -40,8 +40,6 @@ type Config struct {
 	SMTPPass string
 	SMTPFrom string
 
-	BaseURL string // public base URL, used to build short link / QR URLs
-
 	// Telegram notifications on inbound email (optional). Both required to enable.
 	TelegramBotToken string
 	TelegramChatID   string
@@ -129,7 +127,6 @@ func Load() (*Config, error) {
 		SMTPUser:         env("LED_SMTP_USER", ""),
 		SMTPPass:         env("LED_SMTP_PASS", ""),
 		SMTPFrom:         env("LED_SMTP_FROM", ""),
-		BaseURL:          strings.TrimRight(env("LED_BASE_URL", ""), "/"),
 		TelegramBotToken: env("LED_TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:   env("LED_TELEGRAM_CHAT_ID", ""),
 	}

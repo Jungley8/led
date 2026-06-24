@@ -334,7 +334,7 @@ func (h *Handler) linkQR(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "not found")
 		return
 	}
-	target := h.shortURL(l)
+	target := shortURL(r, l)
 	png, err := qrcode.Encode(target, qrcode.Medium, 320)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "qr failed")
@@ -344,13 +344,17 @@ func (h *Handler) linkQR(w http.ResponseWriter, r *http.Request) {
 	w.Write(png)
 }
 
-// shortURL builds the public URL for a link.
-func (h *Handler) shortURL(l models.Link) string {
-	if l.Host != "" {
-		return "https://" + l.Host + "/" + l.Slug
+// shortURL builds the public URL for a link. When the link has its own host it
+// is used; otherwise the URL is derived from the incoming request so no extra
+// configuration is needed.
+func shortURL(r *http.Request, l models.Link) string {
+	host := l.Host
+	scheme := "https"
+	if host == "" {
+		host = r.Host
+		if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
+			scheme = "http"
+		}
 	}
-	if h.cfg.BaseURL != "" {
-		return h.cfg.BaseURL + "/" + l.Slug
-	}
-	return "/" + l.Slug
+	return scheme + "://" + host + "/" + l.Slug
 }

@@ -8,8 +8,6 @@ A self-hosted **short link, mailbox, and DNS management** service in a single Go
 binary with an embedded React dashboard. Inspired by [wr.do](https://github.com/oiov/wr.do)
 and [dub](https://github.com/dubinc/dub), rebuilt to ship as **one binary / one Docker image**.
 
-Unlike wr.do, **every entity — links, mailboxes, and DNS records — supports a free-text note.**
-
 > Single-user today. The schema already carries an owner id on every row, so
 > multi-user / multi-org (under a commercial license) drops in without a migration.
 

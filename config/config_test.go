@@ -48,16 +48,3 @@ func TestLoadAppliesDefaults(t *testing.T) {
 		t.Errorf("DBDSN default = %q want led.db", cfg.DBDSN)
 	}
 }
-
-func TestLoadTrimsBaseURL(t *testing.T) {
-	t.Setenv("LED_SECRET_KEY", "s")
-	t.Setenv("LED_ADMIN_PASSWORD", "pw")
-	t.Setenv("LED_BASE_URL", "https://go.example.com/")
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if cfg.BaseURL != "https://go.example.com" {
-		t.Errorf("BaseURL = %q, trailing slash not trimmed", cfg.BaseURL)
-	}
-}
