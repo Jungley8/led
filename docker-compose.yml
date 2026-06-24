@@ -12,10 +12,16 @@ services:
       LED_INBOUND_TOKEN: ${LED_INBOUND_TOKEN:-}
       LED_ADMIN_HOST: ${LED_ADMIN_HOST:-}
       # SQLite by default; data persisted in the named volume below.
-      LED_DB_DRIVER: sqlite
-      LED_DB_DSN: /data/led.db
+      LED_DB_DRIVER: ${LED_DB_DRIVER:-sqlite}
+      LED_DB_DSN: ${LED_DB_DSN:-/data/led.db}
+      # Optional GeoLite2 mmdb for click geo stats (see the volume mount below).
+      LED_GEOIP_DB: ${LED_GEOIP_DB:-}
     volumes:
       - led-data:/data
+      # To enable GeoIP, put a GeoLite2-City.mmdb next to this file on the host,
+      # uncomment the mount below, and set LED_GEOIP_DB=/data/GeoLite2-City.mmdb
+      # in your .env. (The path on the RIGHT is what LED_GEOIP_DB must point to.)
+      # - ./GeoLite2-City.mmdb:/data/GeoLite2-City.mmdb:ro
     restart: unless-stopped
 
 volumes:
