@@ -8,6 +8,7 @@ import MailPage from "./pages/Mail";
 import SettingsPage from "./pages/Settings";
 import SSHKeysPage from "./pages/SSHKeys";
 import VPSPage from "./pages/VPS";
+import FinancePage from "./pages/Finance";
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/mail" element={<MailPage />} />
             <Route path="/vps" element={<VPSPage />} />
             <Route path="/sshkeys" element={<SSHKeysPage />} />
+            <Route path="/finance" element={<FinancePage />} />
             <Route path="/settings/*" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes>
@@ -63,6 +65,7 @@ function Sidebar({ user, onLogout }: { user: string; onLogout: () => void }) {
   const infraItems = [
     { to: "/vps", label: "VPS", icon: "🖥️" },
     { to: "/sshkeys", label: "SSH Keys", icon: "🔑" },
+    { to: "/finance", label: "Finance", icon: "💳" },
     { to: "/settings", label: "Settings", icon: "⚙️" },
   ];
 

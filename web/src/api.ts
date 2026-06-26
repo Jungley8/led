@@ -149,6 +149,27 @@ export interface LinkStats {
   browsers: StatKV[] | null;
 }
 
+export interface Subscription {
+  id: number;
+  name: string;
+  vendor: string;
+  cost: number;
+  currency: string;
+  cycle: "monthly" | "yearly";
+  nextRenewal: string | null;
+  note: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceSummary {
+  count: number;
+  monthlyByCurrency: Record<string, number>;
+  yearlyByCurrency: Record<string, number>;
+  renewingSoon: Subscription[];
+}
+
 export interface Token {
   id: number;
   name: string;
@@ -350,6 +371,13 @@ export const api = {
   createVPS: (d: Partial<VPS>) => req<VPS>("POST", "/api/vps", d),
   updateVPS: (id: number, d: Partial<VPS>) => req<VPS>("PUT", `/api/vps/${id}`, d),
   deleteVPS: (id: number) => req<void>("DELETE", `/api/vps/${id}`),
+
+  // finance
+  subscriptions: () => req<Subscription[]>("GET", "/api/subscriptions"),
+  createSubscription: (d: Partial<Subscription>) => req<Subscription>("POST", "/api/subscriptions", d),
+  updateSubscription: (id: number, d: Partial<Subscription>) => req<Subscription>("PUT", `/api/subscriptions/${id}`, d),
+  deleteSubscription: (id: number) => req<void>("DELETE", `/api/subscriptions/${id}`),
+  financeSummary: () => req<FinanceSummary>("GET", "/api/finance/summary"),
 };
 
 export { ApiError };
