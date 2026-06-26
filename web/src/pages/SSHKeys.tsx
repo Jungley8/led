@@ -5,14 +5,43 @@ import { Empty, Field, Modal, timeAgo, Code } from "../ui";
 export default function SSHKeysPage() {
   const [keys, setKeys] = useState<SSHKey[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [error, setError] = useState<{ status: number; message: string } | null>(null);
 
   function load() {
-    api.sshKeys().then(setKeys);
+    api.sshKeys()
+      .then(setKeys)
+      .catch((err) => setError({ status: err.status, message: err.message }));
   }
 
   useEffect(() => {
     load();
   }, []);
+
+  if (error) {
+    return (
+      <div className="card flex flex-col items-center justify-center gap-4 py-20 px-6 text-center">
+        <div className="text-5xl">{error.status === 402 ? "🔒" : "🔌"}</div>
+        <div>
+          <h2 className="text-xl font-bold mb-1">
+            {error.status === 402 ? "Pro Feature Locked" : "Feature Unavailable"}
+          </h2>
+          <p className="text-sm text-zinc-400 max-w-md mx-auto">
+            {error.status === 402
+              ? "A valid led-pro license is required to manage SSH keys."
+              : "The SSH keys management feature is not available or disabled in this installation."}
+          </p>
+        </div>
+        {error.status === 402 && (
+          <a
+            href="/settings/license"
+            className="btn-primary mt-2"
+          >
+            Manage License
+          </a>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>

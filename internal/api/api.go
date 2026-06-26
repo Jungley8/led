@@ -142,15 +142,7 @@ func (h *Handler) Routes() *http.ServeMux {
 	p("DELETE /api/notification-channels/{id}", h.deleteNotificationChannel)
 	p("POST /api/notification-channels/{id}/test", h.testNotificationChannel)
 
-	p("GET /api/ssh-keys", h.listSSHKeys)
-	p("POST /api/ssh-keys", h.createSSHKey)
-	p("DELETE /api/ssh-keys/{id}", h.deleteSSHKey)
 
-	p("GET /api/vps", h.listVPS)
-	p("POST /api/vps", h.createVPS)
-	p("PUT /api/vps/{id}", h.updateVPS)
-	p("DELETE /api/vps/{id}", h.deleteVPS)
-	p("GET /api/vps/{id}/terminal", h.vpsTerminal)
 
 	// Abuse reports: submit is public, list/update require admin session.
 	p("GET /api/abuse", h.listAbuseReports)

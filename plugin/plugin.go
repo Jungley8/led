@@ -42,6 +42,10 @@ type Context struct {
 	// context (pass nil to omit). Mirrors the core h.audit() helper so plugins
 	// never import led's internal/api or internal/models directly.
 	Audit func(r *http.Request, action, targetType string, targetID uint, meta map[string]any)
+	// Encrypt seals plaintext with AES-256-GCM and returns base64(nonce||ciphertext).
+	Encrypt func(plaintext []byte) (string, error)
+	// Decrypt reverses Encrypt.
+	Decrypt func(encoded string) ([]byte, error)
 }
 
 // Plugin is a unit of Pro functionality mounted onto the core app.

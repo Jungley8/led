@@ -361,31 +361,7 @@ type NotificationChannel struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-type SSHKey struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	OrgID   uint `gorm:"column:owner_id;index;default:1" json:"-"`
-	Name      string    `json:"name" gorm:"size:255"`
-	Type      string    `json:"type" gorm:"size:32"` // e.g. "rsa", "ed25519", "imported"
-	Key       string    `json:"-" gorm:"type:text"`  // AES-GCM encrypted private key
-	PubKey    string    `json:"pubKey" gorm:"type:text"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-}
 
-type VPS struct {
-	ID          uint       `json:"id" gorm:"primaryKey"`
-	OrgID   uint `gorm:"column:owner_id;index;default:1" json:"-"`
-	Name        string     `json:"name" gorm:"size:255"`
-	IP          string     `json:"ip" gorm:"size:64"`
-	Port        int        `json:"port" gorm:"default:22"`
-	User        string     `json:"user" gorm:"size:64;default:'root'"`
-	SSHKeyID    uint       `json:"sshKeyId" gorm:"index"`
-	Status      string     `json:"status" gorm:"size:32;default:'unknown'"` // "online", "offline", "unknown"
-	FailCount   int        `json:"failCount" gorm:"default:0"`
-	LastChecked *time.Time `json:"lastChecked"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
-}
 
 // AuditLog records admin actions for traceability.
 // Design references: Outline (name/actorId/data), Gitea (op_type/content), Authentik (action/context).
@@ -423,6 +399,6 @@ func AllModels() []any {
 		&Org{}, &User{}, &OrgMember{},
 		&ProviderAccount{}, &Domain{}, &Link{}, &LinkEvent{}, &Mailbox{}, &Email{},
 		&Token{}, &Setting{}, &SMTPSender{}, &NotificationChannel{},
-		&SSHKey{}, &VPS{}, &AbuseReport{}, &AuditLog{},
+		&AbuseReport{}, &AuditLog{},
 	}
 }

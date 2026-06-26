@@ -32,7 +32,6 @@ import (
 	"github.com/Jungley8/led/internal/notify"
 	"github.com/Jungley8/led/internal/server"
 	"github.com/Jungley8/led/internal/shortlink"
-	"github.com/Jungley8/led/internal/vpschecker"
 	"github.com/Jungley8/led/plugin"
 	"github.com/Jungley8/led/webembed"
 	"gorm.io/gorm"
@@ -106,12 +105,14 @@ func (a *App) Run(ctx context.Context) error {
 	apiHandler := api.New(a.cfg, a.gdb, a.cipher, a.auth, a.geo)
 	mux := apiHandler.Routes()
 	pctx := &plugin.Context{
-		DB:     a.gdb,
-		Guard:  a.auth.Require,
-		Notify: notify.Send,
-		UserID: a.auth.UserID,
-		OrgID:  a.auth.OrgID,
-		Audit:  apiHandler.Audit,
+		DB:      a.gdb,
+		Guard:   a.auth.Require,
+		Notify:  notify.Send,
+		UserID:  a.auth.UserID,
+		OrgID:   a.auth.OrgID,
+		Audit:   apiHandler.Audit,
+		Encrypt: a.cipher.Encrypt,
+		Decrypt: a.cipher.Decrypt,
 	}
 	for _, p := range a.plugins {
 		p.Mount(mux, pctx)
@@ -137,8 +138,7 @@ func (a *App) Run(ctx context.Context) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	checker := vpschecker.New(a.gdb, a.cipher)
-	go checker.Start(ctx)
+
 
 	go cleanup.Start(ctx, a.gdb, apiHandler.DataRetentionDays)
 

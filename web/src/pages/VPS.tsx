@@ -11,17 +11,48 @@ export default function VPSPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<VPS | null>(null);
   const [terminalVPS, setTerminalVPS] = useState<VPS | null>(null);
+  const [error, setError] = useState<{ status: number; message: string } | null>(null);
 
   function load() {
-    api.vpsList().then(setList);
-    api.sshKeys().then(setKeys);
+    api.vpsList()
+      .then(setList)
+      .catch((err) => setError({ status: err.status, message: err.message }));
+    api.sshKeys().then(setKeys).catch(() => {});
   }
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 30000); // refresh status every 30s
+    const t = setInterval(() => {
+      if (!error) load();
+    }, 30000); // refresh status every 30s
     return () => clearInterval(t);
-  }, []);
+  }, [error]);
+
+  if (error) {
+    return (
+      <div className="card flex flex-col items-center justify-center gap-4 py-20 px-6 text-center">
+        <div className="text-5xl">{error.status === 402 ? "🔒" : "🔌"}</div>
+        <div>
+          <h2 className="text-xl font-bold mb-1">
+            {error.status === 402 ? "Pro Feature Locked" : "Feature Unavailable"}
+          </h2>
+          <p className="text-sm text-zinc-400 max-w-md mx-auto">
+            {error.status === 402
+              ? "A valid led-pro license is required to manage VPS infrastructure."
+              : "The VPS infrastructure feature is not available or disabled in this installation."}
+          </p>
+        </div>
+        {error.status === 402 && (
+          <a
+            href="/settings/license"
+            className="btn-primary mt-2"
+          >
+            Manage License
+          </a>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
