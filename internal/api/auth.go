@@ -45,16 +45,18 @@ func (h *Handler) bootstrapUserID(username string, orgID uint) uint {
 	return user.ID
 }
 
-// bootstrapOrgID returns the ID of the first org (creating one if none exists).
-// This ensures the admin session always has a valid org scope.
+// bootstrapOrgID returns the ID of the admin's own org, creating it if it
+// doesn't exist yet. It looks up by slug (derived from AdminUser) rather than
+// taking db.First(), so an OAuth user logging in before the admin password
+// login cannot accidentally become the admin's org.
 func (h *Handler) bootstrapOrgID() uint {
-	var org models.Org
-	if err := h.db.First(&org).Error; err == nil {
-		return org.ID
-	}
 	slug := safeSlug(h.cfg.AdminUser)
 	if slug == "" {
 		slug = "default"
+	}
+	var org models.Org
+	if h.db.Where("slug = ?", slug).First(&org).Error == nil {
+		return org.ID
 	}
 	org = models.Org{Name: h.cfg.AdminUser, Slug: slug}
 	h.db.Create(&org)
