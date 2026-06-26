@@ -6,13 +6,18 @@ import { Header } from "./Links";
 
 export default function OverviewPage() {
   const [o, setO] = useState<Overview | null>(null);
+  const [includeBot, setIncludeBot] = useState(false);
   const nav = useNavigate();
 
   useEffect(() => {
-    api.overview().then(setO).catch(() => {});
-  }, []);
+    api.overview(includeBot).then(setO).catch(() => {});
+  }, [includeBot]);
 
   if (!o) return <div className="grid h-64 place-items-center text-zinc-500">loading…</div>;
+
+  const botLabel = includeBot
+    ? `incl. ${o.botClicks30d} bot`
+    : `${o.botClicks30d} bot hidden`;
 
   return (
     <div>
@@ -26,9 +31,12 @@ export default function OverviewPage() {
       </div>
 
       <div className="mb-5 card p-4">
-        <div className="mb-2 flex items-baseline justify-between">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <h3 className="font-semibold">Clicks · last 30 days</h3>
-          <span className="text-sm text-zinc-500">{o.clicks30d} total</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-zinc-500">{o.clicks30d} total · {botLabel}</span>
+            <BotToggle value={includeBot} onChange={setIncludeBot} />
+          </div>
         </div>
         <AreaChart series={o.series ?? []} />
       </div>
@@ -56,11 +64,11 @@ export default function OverviewPage() {
           )}
         </Panel>
 
-        <Panel title="Top countries">
+        <Panel title={`Top countries${includeBot ? " (incl. bots)" : ""}`}>
           <BarList rows={o.countries} empty="No geo data (set LED_GEOIP_DB)" />
         </Panel>
 
-        <Panel title="Devices">
+        <Panel title={`Devices${includeBot ? " (incl. bots)" : ""}`}>
           <BarList rows={o.devices} />
         </Panel>
       </div>
@@ -90,6 +98,22 @@ export default function OverviewPage() {
         </Panel>
       </div>
     </div>
+  );
+}
+
+function BotToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!value)}
+      title={value ? "Hide bot traffic" : "Show bot traffic"}
+      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+        value
+          ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+          : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+      }`}
+    >
+      <span>{value ? "🤖 bots on" : "🤖 bots off"}</span>
+    </button>
   );
 }
 

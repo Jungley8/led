@@ -192,6 +192,9 @@ export interface Overview {
   totalClicks: number;
   clicks7d: number;
   clicks30d: number;
+  botClicks7d: number;
+  botClicks30d: number;
+  includeBot: boolean;
   series: StatKV[] | null;
   topLinks: { id: number; slug: string; host: string; clicks: number }[] | null;
   devices: StatKV[] | null;
@@ -246,7 +249,8 @@ export interface Settings {
 
 export const api = {
   // overview
-  overview: () => req<Overview>("GET", "/api/overview"),
+  overview: (includeBot = false) =>
+    req<Overview>("GET", `/api/overview${includeBot ? "?includeBot=true" : ""}`),
 
   // settings
   settings: () => req<Settings>("GET", "/api/settings"),

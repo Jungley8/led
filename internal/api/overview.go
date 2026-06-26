@@ -5,14 +5,26 @@ import (
 	"time"
 
 	"github.com/Jungley8/led/internal/models"
+	"gorm.io/gorm"
 )
 
 // overview returns aggregate dashboard statistics for the home page.
+// Query param: includeBot=true — when present, bot clicks are counted alongside
+// human clicks so the caller can compare bot vs human traffic.
 func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	since30 := now.AddDate(0, 0, -30)
 	since7 := now.AddDate(0, 0, -7)
 	org := h.orgID(r)
+	includeBot := r.URL.Query().Get("includeBot") == "true"
+
+	// botFilter applies is_bot=false unless the caller explicitly wants bot traffic.
+	botFilter := func(q *gorm.DB) *gorm.DB {
+		if includeBot {
+			return q
+		}
+		return q.Where("is_bot = ?", false)
+	}
 
 	count := func(model any, conds ...any) int64 {
 		var n int64
@@ -25,29 +37,30 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var totalClicks int64
-	h.db.Model(&models.Link{}).Where("owner_id = ?", org).Select("COALESCE(SUM(clicks),0)").Scan(&totalClicks)
+	botFilter(h.db.Model(&models.LinkEvent{}).
+		Joins("JOIN links ON links.id = link_events.link_id AND links.owner_id = ?", org)).
+		Select("COUNT(*)").Scan(&totalClicks)
 
-	// Clicks are scoped via link ownership.
 	orgLinks := h.db.Model(&models.Link{}).Select("id").Where("owner_id = ?", org)
 
-	// Daily click series for the last 30 days (sqlite strftime; postgres fallback).
+	// Daily click series for the last 30 days.
 	var series []statKV
-	h.db.Model(&models.LinkEvent{}).
+	botFilter(h.db.Model(&models.LinkEvent{}).
+		Where("link_id IN (?) AND created_at >= ?", orgLinks, since30)).
 		Select("strftime('%Y-%m-%d', created_at) as key, count(*) as count").
-		Where("link_id IN (?) AND created_at >= ?", orgLinks, since30).
 		Group("key").Order("key ASC").Scan(&series)
 	if len(series) == 0 && h.cfg.DBDriver == "postgres" {
-		h.db.Model(&models.LinkEvent{}).
+		botFilter(h.db.Model(&models.LinkEvent{}).
+			Where("link_id IN (?) AND created_at >= ?", orgLinks, since30)).
 			Select("to_char(created_at, 'YYYY-MM-DD') as key, count(*) as count").
-			Where("link_id IN (?) AND created_at >= ?", orgLinks, since30).
 			Group("key").Order("key ASC").Scan(&series)
 	}
 
 	top := func(col string) []statKV {
 		var rows []statKV
-		h.db.Model(&models.LinkEvent{}).
+		botFilter(h.db.Model(&models.LinkEvent{}).
+			Where("link_id IN (?) AND created_at >= ? AND "+col+" <> ''", orgLinks, since30)).
 			Select(col+" as key, count(*) as count").
-			Where("link_id IN (?) AND created_at >= ? AND "+col+" <> ''", orgLinks, since30).
 			Group(col).Order("count DESC").Limit(8).Scan(&rows)
 		return rows
 	}
@@ -89,7 +102,18 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	}
 	clickCount := func(conds ...any) int64 {
 		var n int64
-		q := h.db.Model(&models.LinkEvent{}).Where("link_id IN (?)", orgLinks)
+		q := botFilter(h.db.Model(&models.LinkEvent{}).Where("link_id IN (?)", orgLinks))
+		if len(conds) > 0 {
+			q = q.Where(conds[0], conds[1:]...)
+		}
+		q.Count(&n)
+		return n
+	}
+
+	// Bot-only counts always returned so the frontend can show the split.
+	botCount := func(conds ...any) int64 {
+		var n int64
+		q := h.db.Model(&models.LinkEvent{}).Where("link_id IN (?) AND is_bot = ?", orgLinks, true)
 		if len(conds) > 0 {
 			q = q.Where(conds[0], conds[1:]...)
 		}
@@ -110,10 +134,13 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 		"totalClicks":  totalClicks,
 		"clicks7d":     clickCount("created_at >= ?", since7),
 		"clicks30d":    clickCount("created_at >= ?", since30),
+		"botClicks7d":  botCount("created_at >= ?", since7),
+		"botClicks30d": botCount("created_at >= ?", since30),
 		"series":       series,
 		"topLinks":     topLinks,
 		"devices":      top("device"),
 		"countries":    top("country"),
 		"recentEmails": recent,
+		"includeBot":   includeBot,
 	})
 }
