@@ -130,6 +130,9 @@ export interface Email {
   read: boolean;
   note: string;
   attachments: string; // JSON string of Attachment[]
+  authSpf: string;   // pass|fail|softfail|neutral|none|""
+  authDkim: string;  // pass|fail|none|""
+  authDmarc: string; // pass|fail|none|""
   receivedAt: string;
 }
 

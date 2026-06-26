@@ -323,6 +323,10 @@ type Email struct {
 	Read        bool      `gorm:"default:false" json:"read"`
 	Note        string    `gorm:"type:text" json:"note"`
 	Attachments string    `gorm:"type:text" json:"attachments"` // JSON array of {filename,contentType,size}
+	// Email authentication results from the receiving MTA (RFC 8601).
+	AuthSPF   string `gorm:"size:16" json:"authSpf"`   // pass|fail|softfail|neutral|none
+	AuthDKIM  string `gorm:"size:16" json:"authDkim"`  // pass|fail|none
+	AuthDMARC string `gorm:"size:16" json:"authDmarc"` // pass|fail|none
 	ReceivedAt  time.Time `gorm:"index" json:"receivedAt"`
 }
 

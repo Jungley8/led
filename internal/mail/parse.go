@@ -23,6 +23,14 @@ type Attachment struct {
 	Size        int    `json:"size"`
 }
 
+// AuthResults holds the outcome of SPF, DKIM, and DMARC checks as reported
+// in the Authentication-Results header added by the receiving MTA.
+type AuthResults struct {
+	SPF   string `json:"spf"`   // pass|fail|softfail|neutral|none|temperror|permerror
+	DKIM  string `json:"dkim"`  // pass|fail|none|temperror|permerror
+	DMARC string `json:"dmarc"` // pass|fail|none|temperror|permerror
+}
+
 // Parsed is the normalized result of reading a raw RFC822 message.
 type Parsed struct {
 	MessageID   string
@@ -34,6 +42,7 @@ type Parsed struct {
 	Attachments []Attachment
 	ReceivedAt  time.Time
 	Raw         []byte
+	Auth        AuthResults
 }
 
 // Parse reads a raw email and extracts the fields led stores.
@@ -55,6 +64,10 @@ func Parse(raw []byte) (*Parsed, error) {
 	}
 	if t, err := h.Date(); err == nil && !t.IsZero() {
 		p.ReceivedAt = t
+	}
+	// Authentication-Results may appear on multiple lines; merge all values.
+	for _, v := range h.Header.Values("Authentication-Results") {
+		parseAuthResults(v, &p.Auth)
 	}
 
 	for {
@@ -84,4 +97,39 @@ func Parse(raw []byte) (*Parsed, error) {
 		}
 	}
 	return p, nil
+}
+
+// parseAuthResults extracts spf/dkim/dmarc result tokens from one
+// Authentication-Results header value.
+//
+// Header format (RFC 8601):
+//
+//	Authentication-Results: mx.example.com;
+//	  spf=pass smtp.mailfrom=example.com;
+//	  dkim=pass header.i=@example.com;
+//	  dmarc=pass (p=NONE) header.from=example.com
+func parseAuthResults(hdr string, out *AuthResults) {
+	// Lowercase once; result tokens are case-insensitive.
+	s := strings.ToLower(hdr)
+	for _, method := range []struct {
+		name   string
+		target *string
+	}{
+		{"spf=", &out.SPF},
+		{"dkim=", &out.DKIM},
+		{"dmarc=", &out.DMARC},
+	} {
+		if idx := strings.Index(s, method.name); idx >= 0 {
+			rest := s[idx+len(method.name):]
+			// Result token ends at the next whitespace, semicolon, or end.
+			end := strings.IndexAny(rest, " \t\r\n;(")
+			if end < 0 {
+				end = len(rest)
+			}
+			token := strings.TrimSpace(rest[:end])
+			if token != "" && *method.target == "" {
+				*method.target = token
+			}
+		}
+	}
 }

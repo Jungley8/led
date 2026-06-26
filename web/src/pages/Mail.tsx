@@ -152,7 +152,10 @@ export default function MailPage() {
                         {!e.read && <span className="h-2 w-2 shrink-0 rounded-full bg-indigo-400" />}
                         <span className={`truncate ${e.read ? "text-zinc-400" : "font-semibold"}`}>{e.from || "(unknown)"}</span>
                       </div>
-                      <span className="shrink-0 text-xs text-zinc-500 ml-2">{timeAgo(e.receivedAt)}</span>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <AuthBadges spf={e.authSpf} dkim={e.authDkim} dmarc={e.authDmarc} compact />
+                        <span className="text-xs text-zinc-500">{timeAgo(e.receivedAt)}</span>
+                      </div>
                     </div>
                     <div className={`truncate text-xs ${e.read ? "text-zinc-500" : "text-zinc-300"}`}>
                       {e.subject || "(no subject)"}
@@ -249,6 +252,9 @@ function EmailViewForm({
              <div><span className="text-zinc-500">From:</span> {email.from}</div>
              <div><span className="text-zinc-500">To:</span> {email.to}</div>
              <div className="text-xs text-zinc-600 mt-1">{new Date(email.receivedAt).toLocaleString()}</div>
+             <div className="mt-2 flex gap-1.5">
+               <AuthBadges spf={email.authSpf} dkim={email.authDkim} dmarc={email.authDmarc} />
+             </div>
            </div>
          </div>
          <div className="flex gap-2">
@@ -502,4 +508,33 @@ function Compose({ draft, onClose }: { draft?: ReplyDraft; onClose: () => void }
       )}
     </Modal>
   );
+}
+
+// AuthBadges renders compact SPF/DKIM/DMARC result pills.
+// In compact mode (list row) only failing/suspicious results are shown to save space.
+function AuthBadges({
+  spf, dkim, dmarc, compact = false,
+}: { spf?: string; dkim?: string; dmarc?: string; compact?: boolean }) {
+  const badge = (label: string, result: string | undefined) => {
+    if (!result || result === "none" || result === "") return null;
+    const pass = result === "pass";
+    const warn = result === "softfail" || result === "neutral";
+    if (compact && pass) return null; // only show problems in list view
+    return (
+      <span
+        key={label}
+        title={`${label}: ${result}`}
+        className={`rounded px-1 py-0.5 text-[10px] font-mono font-semibold ${
+          pass ? "bg-emerald-900/40 text-emerald-400" :
+          warn ? "bg-amber-900/40 text-amber-400" :
+                 "bg-red-900/40 text-red-400"
+        }`}
+      >
+        {label}:{result}
+      </span>
+    );
+  };
+  const badges = [badge("SPF", spf), badge("DKIM", dkim), badge("DMARC", dmarc)].filter(Boolean);
+  if (badges.length === 0) return null;
+  return <>{badges}</>;
 }

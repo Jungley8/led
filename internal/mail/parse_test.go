@@ -45,6 +45,70 @@ Content-Type: text/html; charset=utf-8
 	}
 }
 
+func TestParseAuthResults(t *testing.T) {
+	cases := []struct {
+		hdr          string
+		spf, dkim, dmarc string
+	}{
+		{
+			"mx.example.com; spf=pass smtp.mailfrom=x@example.com; dkim=pass header.i=@example.com; dmarc=pass",
+			"pass", "pass", "pass",
+		},
+		{
+			"mx.example.com; spf=fail; dkim=none; dmarc=fail",
+			"fail", "none", "fail",
+		},
+		{
+			"mx.example.com; spf=softfail (reason); dkim=temperror",
+			"softfail", "temperror", "",
+		},
+		{
+			"no-auth-results-here",
+			"", "", "",
+		},
+	}
+	for _, c := range cases {
+		var got AuthResults
+		parseAuthResults(c.hdr, &got)
+		if got.SPF != c.spf {
+			t.Errorf("SPF: got %q, want %q (hdr: %q)", got.SPF, c.spf, c.hdr)
+		}
+		if got.DKIM != c.dkim {
+			t.Errorf("DKIM: got %q, want %q (hdr: %q)", got.DKIM, c.dkim, c.hdr)
+		}
+		if got.DMARC != c.dmarc {
+			t.Errorf("DMARC: got %q, want %q (hdr: %q)", got.DMARC, c.dmarc, c.hdr)
+		}
+	}
+}
+
+func TestParseEmailWithAuthResults(t *testing.T) {
+	raw := strings.ReplaceAll(`From: sender@example.com
+To: recv@test.net
+Subject: auth test
+Authentication-Results: mx.example.com;
+ spf=pass smtp.mailfrom=example.com;
+ dkim=pass header.i=@example.com;
+ dmarc=pass
+Message-Id: <auth123@example.com>
+
+body
+`, "\n", "\r\n")
+	p, err := Parse([]byte(raw))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if p.Auth.SPF != "pass" {
+		t.Errorf("SPF = %q, want pass", p.Auth.SPF)
+	}
+	if p.Auth.DKIM != "pass" {
+		t.Errorf("DKIM = %q, want pass", p.Auth.DKIM)
+	}
+	if p.Auth.DMARC != "pass" {
+		t.Errorf("DMARC = %q, want pass", p.Auth.DMARC)
+	}
+}
+
 func TestParseUnparseableDoesNotPanic(t *testing.T) {
 	p, err := Parse([]byte("this is not a valid email at all \x00\x01"))
 	if err != nil {

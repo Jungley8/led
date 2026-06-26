@@ -309,6 +309,7 @@ func (h *Handler) inbound(w http.ResponseWriter, r *http.Request) {
 		FromAddr: parsed.From, ToAddr: to, Subject: parsed.Subject,
 		Text: parsed.Text, HTML: parsed.HTML, Raw: parsed.Raw,
 		Attachments: att, ReceivedAt: parsed.ReceivedAt,
+		AuthSPF: parsed.Auth.SPF, AuthDKIM: parsed.Auth.DKIM, AuthDMARC: parsed.Auth.DMARC,
 	}
 	h.db.Create(&e)
 
