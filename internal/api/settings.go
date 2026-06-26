@@ -13,6 +13,8 @@ const (
 	keyReservedSlugs     = "reserved_slugs"
 	keyReservedMailboxes = "reserved_mailboxes"
 	keyCloudflareToken   = "cloudflare_token" // stored AES-GCM encrypted
+	keyInboundToken      = "inbound_token"
+	keyCatchAll          = "catch_all"
 )
 
 // Slugs that can never be short links because they collide with reserved
@@ -102,6 +104,8 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 		"reservedMailboxes":  h.getSetting(keyReservedMailboxes),
 		"builtinReserved":    []string{"admin", "api", "assets"},
 		"cloudflareTokenSet": h.getSetting(keyCloudflareToken) != "",
+		"inboundToken":       h.getSetting(keyInboundToken),
+		"catchAll":           h.getSetting(keyCatchAll) == "true",
 	})
 }
 
@@ -110,6 +114,8 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 		ReservedSlugs     *string `json:"reservedSlugs"`
 		ReservedMailboxes *string `json:"reservedMailboxes"`
 		CloudflareToken   *string `json:"cloudflareToken"` // "" clears, omitted keeps
+		InboundToken      *string `json:"inboundToken"`
+		CatchAll          *bool   `json:"catchAll"`
 	}
 	if err := readJSON(r, &d); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid body")
@@ -132,6 +138,16 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			h.setSetting(keyCloudflareToken, enc)
 		}
+	}
+	if d.InboundToken != nil {
+		h.setSetting(keyInboundToken, strings.TrimSpace(*d.InboundToken))
+	}
+	if d.CatchAll != nil {
+		val := "false"
+		if *d.CatchAll {
+			val = "true"
+		}
+		h.setSetting(keyCatchAll, val)
 	}
 	h.getSettings(w, r)
 }

@@ -141,7 +141,21 @@ type domainDTO struct {
 
 func (h *Handler) listDomains(w http.ResponseWriter, r *http.Request) {
 	var ds []models.Domain
-	h.db.Order("created_at DESC").Find(&ds)
+	q := h.db.Order("created_at DESC")
+	if s := r.URL.Query().Get("q"); s != "" {
+		like := "%" + s + "%"
+		q = q.Where("name LIKE ? OR note LIKE ?", like, like)
+	}
+	limit := 50
+	if l, _ := strconv.Atoi(r.URL.Query().Get("limit")); l > 0 && l <= 500 {
+		limit = l
+	}
+	offset := 0
+	if o, _ := strconv.Atoi(r.URL.Query().Get("offset")); o > 0 {
+		offset = o
+	}
+	q = q.Limit(limit).Offset(offset)
+	q.Find(&ds)
 	writeJSON(w, http.StatusOK, ds)
 }
 

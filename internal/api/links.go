@@ -108,6 +108,15 @@ func (h *Handler) listLinks(w http.ResponseWriter, r *http.Request) {
 	if host := r.URL.Query().Get("host"); host != "" {
 		q = q.Where("host = ?", host)
 	}
+	limit := 50
+	if l, _ := strconv.Atoi(r.URL.Query().Get("limit")); l > 0 && l <= 500 {
+		limit = l
+	}
+	offset := 0
+	if o, _ := strconv.Atoi(r.URL.Query().Get("offset")); o > 0 {
+		offset = o
+	}
+	q = q.Limit(limit).Offset(offset)
 	q.Find(&links)
 	out := make([]linkView, len(links))
 	for i, l := range links {

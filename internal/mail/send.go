@@ -1,11 +1,8 @@
 package mail
-
 import (
 	"fmt"
 	"net/smtp"
 	"strings"
-
-	"github.com/jungley/led/config"
 )
 
 // Message is an outbound email.
@@ -27,20 +24,6 @@ type SMTPSender struct {
 	host, port, user, pass, from string
 }
 
-// NewSender builds a Sender from config, or nil if no SMTP relay is configured.
-func NewSender(cfg *config.Config) Sender {
-	if cfg.SMTPHost == "" {
-		return nil
-	}
-	from := cfg.SMTPFrom
-	if from == "" {
-		from = cfg.SMTPUser
-	}
-	return &SMTPSender{
-		host: cfg.SMTPHost, port: cfg.SMTPPort,
-		user: cfg.SMTPUser, pass: cfg.SMTPPass, from: from,
-	}
-}
 
 // NewCustomSender builds a Sender from explicit credentials.
 func NewCustomSender(host, port, user, pass, from string) Sender {

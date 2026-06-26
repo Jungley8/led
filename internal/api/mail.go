@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jungley/led/internal/mail"
 	"github.com/jungley/led/internal/models"
+	"github.com/jungley/led/internal/notify"
 )
 
 // --- mailboxes ---
@@ -105,8 +107,17 @@ func (h *Handler) listEmails(w http.ResponseWriter, r *http.Request) {
 		like := "%" + s + "%"
 		q = q.Where("subject LIKE ? OR from_addr LIKE ? OR text LIKE ? OR note LIKE ?", like, like, like, like)
 	}
+	limit := 50
+	if l, _ := strconv.Atoi(r.URL.Query().Get("limit")); l > 0 && l <= 500 {
+		limit = l
+	}
+	offset := 0
+	if o, _ := strconv.Atoi(r.URL.Query().Get("offset")); o > 0 {
+		offset = o
+	}
+	q = q.Limit(limit).Offset(offset)
 	var emails []models.Email
-	q.Limit(200).Find(&emails)
+	q.Find(&emails)
 	writeJSON(w, http.StatusOK, emails)
 }
 
@@ -209,25 +220,21 @@ func (h *Handler) sendEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sender mail.Sender
-	if payload.SMTPSenderID != 0 {
-		var s models.SMTPSender
-		if err := h.db.First(&s, payload.SMTPSenderID).Error; err != nil {
-			writeErr(w, http.StatusBadRequest, "invalid smtp sender id")
-			return
-		}
-		pass, err := h.cipher.Decrypt(s.Pass)
-		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "decrypt failed")
-			return
-		}
-		sender = mail.NewCustomSender(s.Host, fmt.Sprint(s.Port), s.User, string(pass), s.FromEmail)
-	} else {
-		if h.sender == nil {
-			writeErr(w, http.StatusServiceUnavailable, "no SMTP relay configured (set LED_SMTP_* or select a sender)")
-			return
-		}
-		sender = h.sender
+	if payload.SMTPSenderID == 0 {
+		writeErr(w, http.StatusBadRequest, "no SMTP sender selected")
+		return
 	}
+	var s models.SMTPSender
+	if err := h.db.First(&s, payload.SMTPSenderID).Error; err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid smtp sender id")
+		return
+	}
+	pass, err := h.cipher.Decrypt(s.Pass)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "decrypt failed")
+		return
+	}
+	sender = mail.NewCustomSender(s.Host, fmt.Sprint(s.Port), s.User, string(pass), s.FromEmail)
 
 	if err := sender.Send(payload.Message); err != nil {
 		writeErr(w, http.StatusBadRequest, "send failed: "+err.Error())
@@ -242,7 +249,8 @@ func (h *Handler) sendEmail(w http.ResponseWriter, r *http.Request) {
 // We parse it, match (or catch-all create) a mailbox by recipient, and store.
 
 func (h *Handler) inbound(w http.ResponseWriter, r *http.Request) {
-	if h.cfg.InboundToken == "" || r.Header.Get("X-Led-Token") != h.cfg.InboundToken {
+	inboundToken := h.getSetting(keyInboundToken)
+	if inboundToken == "" || r.Header.Get("X-Led-Token") != inboundToken {
 		writeErr(w, http.StatusUnauthorized, "bad token")
 		return
 	}
@@ -282,13 +290,17 @@ func (h *Handler) inbound(w http.ResponseWriter, r *http.Request) {
 	}
 	h.db.Create(&e)
 
-	// Best-effort Telegram notification; never block or fail the webhook.
-	if h.notifier != nil {
-		text := fmt.Sprintf("📧 New mail to %s — From: %s — %s", to, parsed.From, parsed.Subject)
+	// Best-effort notification; never block or fail the webhook.
+	text := fmt.Sprintf("📧 New mail to %s — From: %s — %s", to, parsed.From, parsed.Subject)
+	var channels []models.NotificationChannel
+	h.db.Where("enabled = ?", true).Find(&channels)
+	if len(channels) > 0 {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
-			_ = h.notifier.Notify(ctx, text)
+			for _, ch := range channels {
+				_ = notify.Send(ctx, ch.Type, ch.Config, text)
+			}
 		}()
 	}
 
@@ -328,7 +340,7 @@ func (h *Handler) resolveMailbox(addr string) (*models.Mailbox, bool) {
 	if err := h.db.Where("address = ? AND enabled = ?", addr, true).First(&mb).Error; err == nil {
 		return &mb, true
 	}
-	if !h.cfg.CatchAll {
+	if h.getSetting(keyCatchAll) != "true" {
 		return nil, false
 	}
 	// Reserved local-parts are never auto-created by catch-all.
