@@ -93,27 +93,76 @@ func (s *Service) Handle(w http.ResponseWriter, r *http.Request, link *models.Li
 			return
 		}
 	}
-	s.record(r, link.ID)
-	http.Redirect(w, r, link.Target, http.StatusFound)
+
+	ip := clientIP(r)
+	ua := r.UserAgent()
+	country, city := s.geo.Locate(ip)
+	info := geo.ParseUA(ua)
+	bot := isBot(ua)
+
+	target := link.Target
+
+	if len(link.RoutingRules) > 0 {
+		lang := r.Header.Get("Accept-Language")
+		for _, rule := range link.RoutingRules {
+			if matchRule(rule, country, info.Device, info.OS, lang) {
+				target = rule.Target
+				break
+			}
+		}
+	}
+
+	s.record(r, link.ID, ip, country, city, ua, info, bot)
+	http.Redirect(w, r, target, http.StatusFound)
+}
+
+var botSignatures = []string{
+	"bot", "spider", "crawl", "slurp",
+	"googlebot", "bingbot", "yandexbot", "duckduckbot", "baiduspider",
+	"facebookexternalhit", "twitterbot", "linkedinbot", "whatsapp", "slackbot", "telegrambot",
+	"discordbot", "skypeuripreview",
+}
+
+func isBot(ua string) bool {
+	uaLower := strings.ToLower(ua)
+	for _, sig := range botSignatures {
+		if strings.Contains(uaLower, sig) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchRule(rule models.RoutingRule, country, device, os, lang string) bool {
+	matchLower := strings.ToLower(rule.Match)
+	switch rule.Type {
+	case "geo":
+		return strings.ToLower(country) == matchLower
+	case "device":
+		return strings.ToLower(device) == matchLower
+	case "os":
+		return strings.ToLower(os) == matchLower
+	case "language":
+		return strings.Contains(strings.ToLower(lang), matchLower)
+	}
+	return false
 }
 
 // record writes a click event and increments the counter in the background.
-func (s *Service) record(r *http.Request, linkID uint) {
-	ip := clientIP(r)
-	ua := r.UserAgent()
+func (s *Service) record(r *http.Request, linkID uint, ip, country, city, ua string, info geo.UAInfo, bot bool) {
 	referer := r.Referer()
 	go func() {
-		country, city := s.geo.Locate(ip)
-		info := geo.ParseUA(ua)
 		ev := models.LinkEvent{
 			LinkID: linkID, CreatedAt: time.Now(),
 			IP: ip, Country: country, City: city,
 			Device: info.Device, Browser: info.Browser, OS: info.OS,
-			Referer: referer, UA: ua,
+			Referer: referer, UA: ua, IsBot: bot,
 		}
 		s.db.Create(&ev)
-		s.db.Model(&models.Link{}).Where("id = ?", linkID).
-			UpdateColumn("clicks", gorm.Expr("clicks + 1"))
+		if !bot {
+			s.db.Model(&models.Link{}).Where("id = ?", linkID).
+				UpdateColumn("clicks", gorm.Expr("clicks + 1"))
+		}
 	}()
 }
 

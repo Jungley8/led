@@ -19,6 +19,43 @@ import (
 
 const SingleUserID uint = 1
 
+type RoutingRule struct {
+	Type   string `json:"type"`   // "geo", "device", "os", "language"
+	Match  string `json:"match"`  // e.g. "US", "Mobile", "iOS", "zh-CN"
+	Target string `json:"target"` // redirect URL if matched
+}
+
+type RoutingRules []RoutingRule
+
+func (r RoutingRules) Value() (driver.Value, error) {
+	if len(r) == 0 {
+		return "[]", nil
+	}
+	b, err := json.Marshal([]RoutingRule(r))
+	return string(b), err
+}
+
+func (r *RoutingRules) Scan(v any) error {
+	if v == nil {
+		*r = nil
+		return nil
+	}
+	var b []byte
+	switch t := v.(type) {
+	case []byte:
+		b = t
+	case string:
+		b = []byte(t)
+	default:
+		return fmt.Errorf("RoutingRules: unsupported scan type %T", v)
+	}
+	if len(b) == 0 {
+		*r = nil
+		return nil
+	}
+	return json.Unmarshal(b, (*[]RoutingRule)(r))
+}
+
 // StringList is a []string persisted as a JSON text column, portable across
 // SQLite and Postgres.
 type StringList []string
@@ -208,11 +245,12 @@ type Link struct {
 	ExpiresAt  *time.Time `json:"expiresAt"`
 	ExpiredURL string     `gorm:"type:text" json:"expiredUrl"` // redirect here once expired / over limit (dub-style)
 	ClickLimit int64      `gorm:"default:0" json:"clickLimit"` // 0 = unlimited
-	Archived   bool       `gorm:"default:false;index" json:"archived"`
-	Enabled    bool       `gorm:"default:true" json:"enabled"`
-	Clicks     int64      `gorm:"default:0" json:"clicks"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	UpdatedAt  time.Time  `json:"updatedAt"`
+	Archived     bool         `gorm:"default:false;index" json:"archived"`
+	Enabled      bool         `gorm:"default:true" json:"enabled"`
+	RoutingRules RoutingRules `gorm:"type:text" json:"routingRules"`
+	Clicks       int64        `gorm:"default:0" json:"clicks"`
+	CreatedAt    time.Time    `json:"createdAt"`
+	UpdatedAt    time.Time    `json:"updatedAt"`
 }
 
 // LinkEvent is a single click, recorded asynchronously for basic analytics.
@@ -228,6 +266,7 @@ type LinkEvent struct {
 	OS        string    `gorm:"size:64" json:"os"`
 	Referer   string    `gorm:"type:text" json:"referer"`
 	UA        string    `gorm:"type:text" json:"ua"`
+	IsBot     bool      `gorm:"default:false;index" json:"isBot"`
 }
 
 // Mailbox is an address that can receive mail (prefix@domain).
@@ -279,9 +318,20 @@ type SMTPSender struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+type NotificationChannel struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	OwnerID   uint      `json:"-" gorm:"index"`
+	Name      string    `json:"name"`
+	Type      string    `json:"type"` // e.g. "telegram", "webhook"
+	Config    string    `json:"config" gorm:"type:text"` // JSON object
+	Enabled   bool      `json:"enabled" gorm:"default:true"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 // AllModels lists every model for AutoMigrate.
 func AllModels() []any {
 	return []any{
-		&ProviderAccount{}, &Domain{}, &Link{}, &LinkEvent{}, &Mailbox{}, &Email{}, &Token{}, &Setting{}, &SMTPSender{},
+		&ProviderAccount{}, &Domain{}, &Link{}, &LinkEvent{}, &Mailbox{}, &Email{}, &Token{}, &Setting{}, &SMTPSender{}, &NotificationChannel{},
 	}
 }
