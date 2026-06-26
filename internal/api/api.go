@@ -99,6 +99,16 @@ func (h *Handler) Routes() http.Handler {
 	p("DELETE /api/notification-channels/{id}", h.deleteNotificationChannel)
 	p("POST /api/notification-channels/{id}/test", h.testNotificationChannel)
 
+	p("GET /api/ssh-keys", h.listSSHKeys)
+	p("POST /api/ssh-keys", h.createSSHKey)
+	p("DELETE /api/ssh-keys/{id}", h.deleteSSHKey)
+
+	p("GET /api/vps", h.listVPS)
+	p("POST /api/vps", h.createVPS)
+	p("PUT /api/vps/{id}", h.updateVPS)
+	p("DELETE /api/vps/{id}", h.deleteVPS)
+	p("GET /api/vps/{id}/terminal", h.vpsTerminal)
+
 	return mux
 }
 

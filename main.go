@@ -21,6 +21,7 @@ import (
 	"github.com/jungley/led/internal/geo"
 	"github.com/jungley/led/internal/server"
 	"github.com/jungley/led/internal/shortlink"
+	"github.com/jungley/led/internal/vpschecker"
 	"github.com/jungley/led/webembed"
 )
 
@@ -63,6 +64,9 @@ func main() {
 		Handler:           srv,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	checker := vpschecker.New(gdb, cipher)
+	go checker.Start(context.Background())
 
 	go func() {
 		log.Printf("led listening on %s (db=%s)", cfg.Listen, cfg.DBDriver)

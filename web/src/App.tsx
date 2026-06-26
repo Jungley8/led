@@ -6,6 +6,8 @@ import LinksPage from "./pages/Links";
 import DomainsPage from "./pages/Domains";
 import MailPage from "./pages/Mail";
 import SettingsPage from "./pages/Settings";
+import SSHKeysPage from "./pages/SSHKeys";
+import VPSPage from "./pages/VPS";
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -39,6 +41,8 @@ export default function App() {
             <Route path="/links" element={<LinksPage />} />
             <Route path="/domains" element={<DomainsPage />} />
             <Route path="/mail" element={<MailPage />} />
+            <Route path="/vps" element={<VPSPage />} />
+            <Route path="/sshkeys" element={<SSHKeysPage />} />
             <Route path="/settings/*" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes>
@@ -50,15 +54,39 @@ export default function App() {
 
 function Sidebar({ user, onLogout }: { user: string; onLogout: () => void }) {
   const nav = useNavigate();
-  const items = [
+  const trafficItems = [
     { to: "/overview", label: "Overview", icon: "📊" },
     { to: "/links", label: "Links", icon: "🔗" },
     { to: "/domains", label: "Domains", icon: "🌐" },
     { to: "/mail", label: "Mail", icon: "✉️" },
+  ];
+  const infraItems = [
+    { to: "/vps", label: "VPS", icon: "🖥️" },
+    { to: "/sshkeys", label: "SSH Keys", icon: "🔑" },
     { to: "/settings", label: "Settings", icon: "⚙️" },
   ];
+
+  const renderNav = (items: typeof trafficItems) => (
+    <nav className="flex flex-col gap-1 mb-6">
+      {items.map((it) => (
+        <NavLink
+          key={it.to}
+          to={it.to}
+          className={({ isActive }) =>
+            `flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+              isActive ? "bg-zinc-800 text-white" : "text-zinc-400 hover:bg-zinc-900"
+            }`
+          }
+        >
+          <span>{it.icon}</span>
+          {it.label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+
   return (
-    <aside className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950 p-4">
+    <aside className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950 p-4 overflow-y-auto">
       <div className="mb-8 flex items-center gap-2 px-2">
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-500 font-bold">l</span>
         <div>
@@ -66,22 +94,12 @@ function Sidebar({ user, onLogout }: { user: string; onLogout: () => void }) {
           <div className="text-[10px] uppercase tracking-wider text-zinc-500">link · email · domain</div>
         </div>
       </div>
-      <nav className="flex flex-col gap-1">
-        {items.map((it) => (
-          <NavLink
-            key={it.to}
-            to={it.to}
-            className={({ isActive }) =>
-              `flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                isActive ? "bg-zinc-800 text-white" : "text-zinc-400 hover:bg-zinc-900"
-              }`
-            }
-          >
-            <span>{it.icon}</span>
-            {it.label}
-          </NavLink>
-        ))}
-      </nav>
+      
+      <div className="px-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Traffic</div>
+      {renderNav(trafficItems)}
+
+      <div className="px-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Infrastructure</div>
+      {renderNav(infraItems)}
       <div className="mt-auto border-t border-zinc-800 pt-4">
         <div className="px-2 text-xs text-zinc-500">signed in as {user}</div>
         <button

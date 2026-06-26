@@ -64,6 +64,27 @@ export interface HostEntry {
   enabled: boolean;
 }
 
+export interface SSHKey {
+  id: number;
+  name: string;
+  type: string;
+  pubKey: string;
+  createdAt: string;
+}
+
+export interface VPS {
+  id: number;
+  name: string;
+  ip: string;
+  port: number;
+  user: string;
+  sshKeyId: number;
+  status: string;
+  failCount: number;
+  lastChecked: string | null;
+  createdAt: string;
+}
+
 // effectiveLinkHosts / effectiveMailHosts return only the enabled hostnames —
 // disabled hosts are kept in config but don't serve traffic.
 export function effectiveLinkHosts(d: Domain): string[] {
@@ -318,6 +339,17 @@ export const api = {
   updateNotificationChannel: (id: number, d: any) => req<NotificationChannel>("PUT", `/api/notification-channels/${id}`, d),
   deleteNotificationChannel: (id: number) => req<void>("DELETE", `/api/notification-channels/${id}`),
   testNotificationChannel: (id: number) => req<void>("POST", `/api/notification-channels/${id}/test`),
+
+  // ssh keys
+  sshKeys: () => req<SSHKey[]>("GET", "/api/ssh-keys"),
+  createSSHKey: (d: { name: string; type: string; key?: string }) => req<SSHKey & { rawPrivateKey?: string }>("POST", "/api/ssh-keys", d),
+  deleteSSHKey: (id: number) => req<void>("DELETE", `/api/ssh-keys/${id}`),
+
+  // vps
+  vpsList: () => req<VPS[]>("GET", "/api/vps"),
+  createVPS: (d: Partial<VPS>) => req<VPS>("POST", "/api/vps", d),
+  updateVPS: (id: number, d: Partial<VPS>) => req<VPS>("PUT", `/api/vps/${id}`, d),
+  deleteVPS: (id: number) => req<void>("DELETE", `/api/vps/${id}`),
 };
 
 export { ApiError };
