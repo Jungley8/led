@@ -39,7 +39,7 @@ export default function App() {
             <Route path="/links" element={<LinksPage />} />
             <Route path="/domains" element={<DomainsPage />} />
             <Route path="/mail" element={<MailPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/*" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes>
         </div>

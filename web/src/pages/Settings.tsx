@@ -1,13 +1,45 @@
 import { useEffect, useState } from "react";
+import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { api, ApiError, Settings, Token } from "../api";
 import { Empty, Field, Modal, timeAgo } from "../ui";
 
 export default function SettingsPage() {
+  const tabs = [
+    { to: "/settings/general", label: "General" },
+    { to: "/settings/providers", label: "Provider Accounts" },
+    { to: "/settings/tokens", label: "API Tokens" },
+  ];
+
   return (
-    <div className="space-y-10">
-      <ProviderAccounts />
-      <GeneralSettings />
-      <ApiTokens />
+    <div className="flex gap-8 items-start">
+      <aside className="w-48 shrink-0 sticky top-6">
+        <h1 className="mb-4 text-xl font-semibold px-2">Settings</h1>
+        <nav className="flex flex-col gap-1">
+          {tabs.map((t) => (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              className={({ isActive }) =>
+                `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-zinc-800 text-white"
+                    : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300"
+                }`
+              }
+            >
+              {t.label}
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+      <div className="flex-1 min-w-0 max-w-3xl">
+        <Routes>
+          <Route path="/" element={<Navigate to="/settings/general" replace />} />
+          <Route path="/general" element={<GeneralSettings />} />
+          <Route path="/providers" element={<ProviderAccounts />} />
+          <Route path="/tokens" element={<ApiTokens />} />
+        </Routes>
+      </div>
     </div>
   );
 }
