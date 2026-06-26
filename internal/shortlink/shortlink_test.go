@@ -25,6 +25,21 @@ func TestStripPort(t *testing.T) {
 	}
 }
 
+func TestAnonymizeIP(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"1.2.3.4", "1.2.3.0"},
+		{"192.168.100.255", "192.168.100.0"},
+		{"2001:db8:85a3::8a2e:370:7334", "2001:db8:85a3::"},
+		{"not-an-ip", ""},
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := anonymizeIP(c.in); got != c.want {
+			t.Errorf("anonymizeIP(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestClientIPPrecedence(t *testing.T) {
 	// X-Forwarded-For wins, taking the first hop.
 	r := httptest.NewRequest(http.MethodGet, "/", nil)

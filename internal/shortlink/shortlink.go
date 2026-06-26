@@ -148,13 +148,33 @@ func matchRule(rule models.RoutingRule, country, device, os, lang string) bool {
 	return false
 }
 
+// anonymizeIP truncates the last octet of IPv4 (1.2.3.4 → 1.2.3.0) and the
+// last 80 bits of IPv6 to avoid storing personally identifiable data.
+func anonymizeIP(raw string) string {
+	ip := net.ParseIP(raw)
+	if ip == nil {
+		return ""
+	}
+	if v4 := ip.To4(); v4 != nil {
+		v4[3] = 0
+		return v4.String()
+	}
+	// IPv6: zero the last 10 bytes (80 bits), keep the first 6 bytes (48 bits).
+	v6 := ip.To16()
+	for i := 6; i < 16; i++ {
+		v6[i] = 0
+	}
+	return v6.String()
+}
+
 // record writes a click event and increments the counter in the background.
 func (s *Service) record(r *http.Request, linkID uint, ip, country, region, city, ua string, info geo.UAInfo, bot bool) {
 	referer := r.Referer()
+	anonIP := anonymizeIP(ip)
 	go func() {
 		ev := models.LinkEvent{
 			LinkID: linkID, CreatedAt: time.Now(),
-			IP: ip, Country: country, Region: region, City: city,
+			IP: anonIP, Country: country, Region: region, City: city,
 			Device: info.Device, Browser: info.Browser, OS: info.OS,
 			Referer: referer, UA: ua, IsBot: bot,
 		}
