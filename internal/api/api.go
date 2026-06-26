@@ -4,6 +4,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/Jungley8/led/config"
 	"github.com/Jungley8/led/internal/auth"
@@ -28,6 +29,20 @@ func New(cfg *config.Config, db *gorm.DB, c *crypto.Cipher, a *auth.Manager, g *
 		h.oauth = auth.NewOAuthHandler(db, cfg.BaseURL, a, c)
 	}
 	return h
+}
+
+// DataRetentionDays returns the configured retention period for click events.
+// Returns 0 if retention is disabled, DefaultRetentionDays if unset.
+func (h *Handler) DataRetentionDays() int {
+	v := h.getSetting(keyDataRetentionDays)
+	if v == "" {
+		return DefaultRetentionDays
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return DefaultRetentionDays
+	}
+	return n
 }
 
 // Routes returns the API mux mounted at /api/. It returns the concrete

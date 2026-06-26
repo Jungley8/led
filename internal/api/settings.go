@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Jungley8/led/internal/models"
@@ -19,7 +20,11 @@ const (
 	keyGoogleClientSecret   = "oauth.google.client_secret" // stored AES-GCM encrypted
 	keyGitHubClientID       = "oauth.github.client_id"
 	keyGitHubClientSecret   = "oauth.github.client_secret" // stored AES-GCM encrypted
+	keyDataRetentionDays    = "data_retention_days"        // 0 = disabled
 )
+
+// DefaultRetentionDays is used when no retention setting is configured.
+const DefaultRetentionDays = 90
 
 // Slugs that can never be short links because they collide with reserved
 // top-level routes.
@@ -103,17 +108,24 @@ func (h *Handler) cloudflareToken() string {
 // --- handlers ---
 
 func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
+	retDays := DefaultRetentionDays
+	if v := h.getSetting(keyDataRetentionDays); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			retDays = n
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"reservedSlugs":        h.getSetting(keyReservedSlugs),
-		"reservedMailboxes":    h.getSetting(keyReservedMailboxes),
-		"builtinReserved":      []string{"admin", "api", "assets"},
-		"cloudflareTokenSet":   h.getSetting(keyCloudflareToken) != "",
-		"inboundToken":         h.getSetting(keyInboundToken),
-		"catchAll":             h.getSetting(keyCatchAll) == "true",
-		"googleClientId":       h.getSetting(keyGoogleClientID),
+		"reservedSlugs":         h.getSetting(keyReservedSlugs),
+		"reservedMailboxes":     h.getSetting(keyReservedMailboxes),
+		"builtinReserved":       []string{"admin", "api", "assets"},
+		"cloudflareTokenSet":    h.getSetting(keyCloudflareToken) != "",
+		"inboundToken":          h.getSetting(keyInboundToken),
+		"catchAll":              h.getSetting(keyCatchAll) == "true",
+		"googleClientId":        h.getSetting(keyGoogleClientID),
 		"googleClientSecretSet": h.getSetting(keyGoogleClientSecret) != "",
-		"githubClientId":       h.getSetting(keyGitHubClientID),
+		"githubClientId":        h.getSetting(keyGitHubClientID),
 		"githubClientSecretSet": h.getSetting(keyGitHubClientSecret) != "",
+		"dataRetentionDays":     retDays,
 	})
 }
 
@@ -128,6 +140,7 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 		GoogleClientSecret  *string `json:"googleClientSecret"` // "" clears, omitted keeps
 		GitHubClientID      *string `json:"githubClientId"`
 		GitHubClientSecret  *string `json:"githubClientSecret"` // "" clears, omitted keeps
+		DataRetentionDays   *int    `json:"dataRetentionDays"`  // 0 = disabled
 	}
 	if err := readJSON(r, &d); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid body")
@@ -190,6 +203,9 @@ func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			h.setSetting(keyGitHubClientSecret, enc)
 		}
+	}
+	if d.DataRetentionDays != nil {
+		h.setSetting(keyDataRetentionDays, strconv.Itoa(*d.DataRetentionDays))
 	}
 	h.getSettings(w, r)
 }

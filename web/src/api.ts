@@ -245,6 +245,7 @@ export interface Settings {
   googleClientSecretSet: boolean;
   githubClientId: string;
   githubClientSecretSet: boolean;
+  dataRetentionDays: number;
 }
 
 export const api = {
@@ -266,6 +267,7 @@ export const api = {
     googleClientSecret?: string;
     githubClientId?: string;
     githubClientSecret?: string;
+    dataRetentionDays?: number;
   }) => req<Settings>("PUT", "/api/settings", s),
 
   // auth

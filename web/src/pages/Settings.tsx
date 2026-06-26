@@ -63,6 +63,7 @@ function GeneralSettings() {
   const [googleClientSecret, setGoogleClientSecret] = useState("");
   const [githubClientId, setGithubClientId] = useState("");
   const [githubClientSecret, setGithubClientSecret] = useState("");
+  const [dataRetentionDays, setDataRetentionDays] = useState(90);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -77,6 +78,7 @@ function GeneralSettings() {
     setTelegramChat(v.telegramChatId || "");
     setGoogleClientId(v.googleClientId || "");
     setGithubClientId(v.githubClientId || "");
+    setDataRetentionDays(v.dataRetentionDays ?? 90);
   }
   useEffect(() => {
     load();
@@ -92,6 +94,7 @@ function GeneralSettings() {
         telegramBotToken: telegramBot, telegramChatId: telegramChat,
         googleClientId: googleClientId.trim(),
         githubClientId: githubClientId.trim(),
+        dataRetentionDays,
       };
       if (cfToken.trim()) payload.cloudflareToken = cfToken.trim();
       if (googleClientSecret.trim()) payload.googleClientSecret = googleClientSecret.trim();
@@ -197,6 +200,24 @@ function GeneralSettings() {
             </div>
             <p className="mt-1 text-xs text-zinc-500">
               Auto-create a mailbox when mail arrives for an unknown address on a managed domain.
+            </p>
+          </div>
+        </div>
+
+        <div className="border-t border-zinc-800 pt-5">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-300">Privacy & Data Retention</h2>
+          <div className="space-y-3">
+            <Field label="Click Event Retention (days)" hint="Link events older than this are deleted daily. Set 0 to keep forever.">
+              <input
+                type="number"
+                min={0}
+                className="input w-32"
+                value={dataRetentionDays}
+                onChange={(e) => setDataRetentionDays(Number(e.target.value))}
+              />
+            </Field>
+            <p className="text-xs text-zinc-500">
+              IP addresses are always stored anonymized (last octet zeroed). This setting controls how long click event records are retained.
             </p>
           </div>
         </div>

@@ -25,6 +25,7 @@ import (
 	"github.com/Jungley8/led/config"
 	"github.com/Jungley8/led/internal/api"
 	"github.com/Jungley8/led/internal/auth"
+	"github.com/Jungley8/led/internal/cleanup"
 	"github.com/Jungley8/led/internal/crypto"
 	"github.com/Jungley8/led/internal/db"
 	"github.com/Jungley8/led/internal/geo"
@@ -102,7 +103,8 @@ func (a *App) Run(ctx context.Context) error {
 
 	// 2. Core API mux, then let plugins mount their own routes onto it.
 	auth.InitGothStore(a.cfg.SecretKey)
-	mux := api.New(a.cfg, a.gdb, a.cipher, a.auth, a.geo).Routes()
+	apiHandler := api.New(a.cfg, a.gdb, a.cipher, a.auth, a.geo)
+	mux := apiHandler.Routes()
 	pctx := &plugin.Context{
 		DB:     a.gdb,
 		Guard:  a.auth.Require,
@@ -136,6 +138,8 @@ func (a *App) Run(ctx context.Context) error {
 
 	checker := vpschecker.New(a.gdb, a.cipher)
 	go checker.Start(ctx)
+
+	go cleanup.Start(ctx, a.gdb, apiHandler.DataRetentionDays)
 
 	go func() {
 		log.Printf("led listening on %s (db=%s)", a.cfg.Listen, a.cfg.DBDriver)
