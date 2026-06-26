@@ -19,12 +19,12 @@ and [dub](https://github.com/dubinc/dub), rebuilt to ship as **one binary / one 
 
 - **Short links** — custom or random slugs, host picked from your link-enabled
   domains, password protection, expiry **and expired-URL fallback**, **click
-  limits**, **tags** + archive, a built-in **UTM builder**, one-click **title
+  limits**, **advanced routing rules** (by geo, device, os, language), **tags** + archive, a built-in **UTM builder**, one-click **title
   fetch** from the destination, QR codes, copy-to-clipboard, and **basic click
-  analytics** (time series + referer / country / device / browser via UA + GeoIP).
+  analytics** (time series + referer / country / device / browser / **bot detection**).
 - **Mailboxes** — addresses built from your mail-enabled domains, receive mail via
   Cloudflare Email Routing, read it (with **attachment list** + raw **.eml**
-  download), **reply**, **mark-all-read**, and send through an SMTP relay.
+  download), **reply**, **mark-all-read**, and send through **multiple configured SMTP relays**.
 - **DNS** — **one-click sync** of every Cloudflare zone + records, full record CRUD
   with **type/text filtering** and **subdomain presets** (short-link / email), all
   behind a provider abstraction (Cloudflare and DNSPod today; Aliyun / Route53 slot
@@ -32,8 +32,7 @@ and [dub](https://github.com/dubinc/dub), rebuilt to ship as **one binary / one 
 - **Open API tokens** — issue bearer tokens for the JSON API; every data endpoint
   accepts either a session cookie or `Authorization: Bearer led_…`. Only a SHA-256
   hash is stored, and the raw token is shown once at creation.
-- **Telegram notifications** — get a Telegram message when new mail arrives
-  (set `LED_TELEGRAM_BOT_TOKEN` + `LED_TELEGRAM_CHAT_ID`).
+- **Notification channels** — receive alerts via Telegram Bot or Webhook when new mail arrives, managed entirely from the dashboard.
 - **One binary** — pure-Go SQLite (no cgo), React dashboard embedded via `go:embed`.
   Postgres supported by flipping two env vars.
 
@@ -97,11 +96,10 @@ SMTP server, so no port 25 / MX / anti-spam ops are required:
 
 1. Enable Email Routing on your domain in Cloudflare.
 2. Deploy `deploy/cloudflare-email-worker.js` as a Worker; set `LED_ENDPOINT`
-   and `LED_TOKEN` (= `LED_INBOUND_TOKEN`).
+   and `LED_TOKEN` (must match the **Inbound Token** you configure in Settings).
 3. Point a catch-all route at the Worker.
 
-Mark a domain as **Accept email** in the dashboard; with `LED_CATCH_ALL=true`,
-mail to any address on it auto-creates a mailbox.
+Mark a domain as **Accept email** in the dashboard; if **Catch-all** is enabled in Settings, mail to any unknown address on it will automatically create a new mailbox.
 
 ## Configuration
 
@@ -119,11 +117,10 @@ make dev
 ## Roadmap
 
 - [x] **P0** scaffold — auth, DB abstraction, embedded SPA, Docker
-- [x] **P1** short links + basic analytics + QR
+- [x] **P1** short links + advanced routing (geo/device) + analytics + QR
 - [x] **P2** DNS management (Cloudflare, multi-provider interface)
-- [x] **P3** email — Cloudflare inbound webhook, inbox UI, SMTP send
-- [x] **P4** open API tokens (bearer auth), more DNS providers (DNSPod),
-  Telegram notifications on inbound email
+- [x] **P3** email — Cloudflare inbound webhook, inbox UI, multiple SMTP senders
+- [x] **P4** open API tokens (bearer auth), system notification channels (Telegram, Webhook)
 - [ ] **P5** multi-tenant / multi-org (commercial license)
 
 ## License

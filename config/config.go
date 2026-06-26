@@ -26,9 +26,6 @@ type Config struct {
 
 	GeoIPDB string // optional path to a MaxMind GeoLite2-City.mmdb
 
-	// Telegram notifications on inbound email (optional). Both required to enable.
-	TelegramBotToken string
-	TelegramChatID   string
 }
 
 func env(key, def string) string {
@@ -107,8 +104,6 @@ func Load() (*Config, error) {
 		AdminPassword:    env("LED_ADMIN_PASSWORD", ""),
 
 		GeoIPDB:          env("LED_GEOIP_DB", ""),
-		TelegramBotToken: env("LED_TELEGRAM_BOT_TOKEN", ""),
-		TelegramChatID:   env("LED_TELEGRAM_CHAT_ID", ""),
 	}
 	if c.DBDriver != "sqlite" && c.DBDriver != "postgres" {
 		return nil, fmt.Errorf("LED_DB_DRIVER must be sqlite or postgres, got %q", c.DBDriver)
