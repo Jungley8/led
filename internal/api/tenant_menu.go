@@ -244,11 +244,11 @@ func (h *Handler) listMenus(w http.ResponseWriter, r *http.Request) {
 		{ID: "overview", Label: "Overview", Path: "/overview", Icon: "📊", Category: "Traffic"},
 		{ID: "links", Label: "Links", Path: "/links", Icon: "🔗", Category: "Traffic"},
 		{ID: "domains", Label: "Domains", Path: "/domains", Icon: "🌐", Category: "Traffic"},
-		{ID: "mail", Label: "Mail", Path: "/mail", Icon: "✉️", Category: "Traffic"},
+		{ID: "mail", Label: "Mail", Path: "/mail", Icon: "✉️", Category: "Mail"},
 
-		{ID: "audit", Label: "Audit Log", Path: "/audit", Icon: "📝", Category: "Infrastructure"},
-		{ID: "abuse", Label: "Abuse", Path: "/abuse", Icon: "🛡️", Category: "Infrastructure"},
-		{ID: "settings", Label: "Settings", Path: "/settings", Icon: "⚙️", Category: "Infrastructure"},
+		{ID: "audit", Label: "Audit Log", Path: "/audit", Icon: "📝", Category: "System"},
+		{ID: "abuse", Label: "Abuse", Path: "/abuse", Icon: "🛡️", Category: "Finance & Safety"},
+		{ID: "settings", Label: "Settings", Path: "/settings", Icon: "⚙️", Category: "System"},
 	}
 
 	// Query from plugin providers if they satisfy MenuProvider
