@@ -144,22 +144,24 @@ function Sidebar({
   if (menuLayout) {
     try {
       const layout = JSON.parse(menuLayout);
-      const assignedIds = new Set<string>();
-      groupedMenus = layout.groups.map((g: any) => {
-        const items = g.items
-          .map((id: string) => menus.find((m) => m.id === id))
-          .filter(Boolean) as MenuItem[];
-        items.forEach((item) => assignedIds.add(item.id));
-        return { name: g.name, items };
-      });
-      // Handle unassigned menus (e.g. newly registered plugins)
-      const unassigned = menus.filter((m) => !assignedIds.has(m.id));
-      if (unassigned.length > 0) {
-        const uncategorizedIdx = groupedMenus.findIndex((g) => g.name === "Uncategorized");
-        if (uncategorizedIdx > -1) {
-          groupedMenus[uncategorizedIdx].items.push(...unassigned);
-        } else {
-          groupedMenus.push({ name: "Uncategorized", items: unassigned });
+      if (layout && Array.isArray(layout.groups)) {
+        const assignedIds = new Set<string>();
+        groupedMenus = layout.groups.map((g: any) => {
+          const items = g.items
+            .map((id: string) => menus.find((m) => m.id === id))
+            .filter(Boolean) as MenuItem[];
+          items.forEach((item) => assignedIds.add(item.id));
+          return { name: g.name, items };
+        });
+        // Handle unassigned menus (e.g. newly registered plugins)
+        const unassigned = menus.filter((m) => !assignedIds.has(m.id));
+        if (unassigned.length > 0) {
+          const uncategorizedIdx = groupedMenus.findIndex((g) => g.name === "Uncategorized");
+          if (uncategorizedIdx > -1) {
+            groupedMenus[uncategorizedIdx].items.push(...unassigned);
+          } else {
+            groupedMenus.push({ name: "Uncategorized", items: unassigned });
+          }
         }
       }
     } catch (e) {

@@ -293,9 +293,20 @@ function MenuCustomizer() {
       const m = await api.menus();
       setMenus(m);
       const settings = await api.getUserSettings();
+      let loaded = false;
       if (settings.menu_layout) {
-        setLayout(JSON.parse(settings.menu_layout));
-      } else {
+        try {
+          const parsed = JSON.parse(settings.menu_layout);
+          if (parsed && Array.isArray(parsed.groups)) {
+            setLayout(parsed);
+            loaded = true;
+          }
+        } catch (err) {
+          console.error("Failed to parse custom menu layout:", err);
+        }
+      }
+      
+      if (!loaded) {
         // Build initial layout from default categories
         const catMap: Record<string, string[]> = {};
         m.forEach((item) => {
